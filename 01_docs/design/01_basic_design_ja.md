@@ -425,11 +425,11 @@ Plotly や Altair、Dash などの高度な可視化ツールはオーバース�
 | PostgreSQLバージョン | PostgreSQL 13 以上（`parallel analyze` が利用可能な環境） |
 | 実行形式 | ローカルスクリプト（CLI）ベース。cron等による定期実行も可能。 |
 | 実行条件 | データベースに接続可能な権限（ANALYZE権限を含む）を持つこと。 |
-| 拡張前提 | 將来的に Docker 化、クラウド実行（例：AWS Batch / Lambda）も視野に入れる。 |
+| 拡張前提 | 将来的に Docker 化、クラウド実行（例：AWS Batch / Lambda）も視野に入れる。 |
 
 
 ## 今後の拡張候補
 
 - モデル管理基盤として **MLflow** や **DVC** の導入検討
-- Web UI 用の軽量フレームワークとして **Streamlit** の採用
+- 将来的なWeb UI との連携については、REST API を通じて任意のフロントエンド（例：React, Next.js など）と統合できる構成を前提としている。
 - モデル自動更新や通知を含む **CI/CD パイプライン連携**
