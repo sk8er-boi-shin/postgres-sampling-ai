@@ -1,3 +1,6 @@
+📌 **This document is planned to be split into smaller sections upon finalization for readability.**
+
+
 # 目次
 
 1. [はじめに](#はじめに)  
