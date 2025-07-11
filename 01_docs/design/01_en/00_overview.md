@@ -2,6 +2,7 @@
 
 1. [Introduction](#1-introduction)
 2. [Background and Purpose](#2-background-and-purpose)
+3. [Scope](#3-scope)
 
 
 📘 **For terminology and technical background used in this document, please refer to the [Reference and Glossary](./03_reference.md#prerequisites).**
@@ -58,3 +59,31 @@ This tool is designed to provide the following value:
 This design document describes the system architecture, execution logic, AI-based estimation approach, and key technical considerations to solve the above challenges.
 
 ---
+
+# 3. Scope
+
+The scope of this design is defined as follows:
+
+### Included Scope
+
+- Statistics update processing (`ANALYZE`) for PostgreSQL databases  
+- Optimization of the sampling row count based on `default_statistics_target`  
+- Design of a script that dynamically calculates the optimal sampling row count for each target table and executes `ANALYZE`  
+- Statistics updates for both regular local tables and partitioned tables  
+
+### Excluded Scope
+
+- Handling of foreign tables or tables accessed via FDW (Foreign Data Wrapper)  
+- Support for RDBMS other than PostgreSQL (e.g., MySQL, Oracle, SQL Server)  
+  ※ Currently limited to PostgreSQL, but expansion to other major RDBMS may be considered in the future if this approach proves stable and effective.  
+- Modifying PostgreSQL's built-in automatic statistics update behavior or directly controlling server parameters  
+- Visualization features such as web UIs or dashboards (considered for future expansion)
+
+### Assumed Environment
+
+- Targeting PostgreSQL version 13 and above
+- Development and execution environment assumed to be a local PC or lightweight VPS  
+- Deployment to production environments will be considered based on the results of future PoC evaluations
+
+---
+
