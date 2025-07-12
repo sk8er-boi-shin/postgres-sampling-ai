@@ -5,6 +5,7 @@
 3. [Scope](#3-scope)
 4. [System Structure](#4-system-structure)
 5. [Processing Overview](#5-processing-overview)
+6. [Processing Flow and Logic Overview](#6-processing-flow-and-logic-overview)
 
 
 📘 **For terminology and technical background used in this document, please refer to the [Reference and Glossary](./03_reference.md#prerequisites).**
@@ -220,5 +221,69 @@ The tool operates in two distinct phases:
 ```
 
 ※ For detailed module structure, see [System Structure](#4-system-structure).
+
+---
+
+
+# 6. Processing Flow and Logic Overview
+
+This section describes the processing flow and core logic of each phase defined in the previous chapter, **System Structure**—specifically, the **Learning Phase** and the **Application Phase**.
+
+
+
+### Learning Phase: Flow and Logic Overview
+
+The learning phase assumes a development or PoC environment and performs a series of operations to allow AI to learn the optimal sampling row count.
+
+#### Processing Flow
+
+1. Specify the target query  
+2. Extract the tables used in the query  
+3. For each table, repeat the following steps:  
+   - Retrieve statistical and structural data from system catalogs (e.g., `pg_stat_all_tables`, `pg_class`)  
+   - Estimate the sampling row count using AI  
+   - Execute `ANALYZE` using the estimated row count  
+   - Record the execution plan and processing time of the target query  
+4. Retrain the AI model based on the results  
+5. Save the trained model (e.g., `best_model.pkl`)
+
+#### Logic Overview
+
+- Uses features such as `reltuples`, `n_dead_tup`, cardinality, and correlation coefficients  
+- Applies a simple regression model or rule-based logic (with plans to extend to reinforcement learning, etc.)  
+- Implements outlier removal and minimum/maximum sampling row limits to ensure safety  
+- Records the feature schema along with the model to prevent inconsistencies during loading
+
+
+### Application Phase: Flow and Logic Overview
+
+In the application phase, the trained model is used in a production environment to apply `ANALYZE` to the appropriate tables referenced in a given query.
+
+#### Processing Flow
+
+1. Specify the target query  
+2. Extract the tables used in the query  
+3. For each table, perform the following:  
+   - Collect metrics (statistical and structural information)  
+   - Estimate the sampling row count using the trained model  
+   - Execute `ANALYZE` using the estimated value  
+     ※ In dry-run mode, only logs are output
+
+#### Logic Overview
+
+- If there is a mismatch between the loaded model and the feature schema, fallback to safe default values  
+- Supports parallel execution for multiple tables (with configurable concurrency limit)  
+- Logs the estimated results, and in dry-run mode, outputs them in JSON or CSV format  
+- In production environments, execution plans are not retrieved—only `ANALYZE` is executed to minimize impact
+
+
+### Common Functions and Notes
+
+- **Logging and Error Handling**: Logs the results, errors, and anomaly detections of each step. Logs can also be used to feed back into the learning phase  
+- **Threshold Management**: Applies thresholds for minimum and maximum sampling row counts to automatically adjust extreme estimates  
+- **Extensibility**:
+  - Future plans include operating via a web UI and visualizing results  
+  - CI/CD integration and automated model evaluation may also be considered
+
 
 ---
