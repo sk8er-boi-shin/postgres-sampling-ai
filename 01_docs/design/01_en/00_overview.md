@@ -3,6 +3,7 @@
 1. [Introduction](#1-introduction)
 2. [Background and Purpose](#2-background-and-purpose)
 3. [Scope](#3-scope)
+4. [System Structure](#4-system-structure)
 
 
 📘 **For terminology and technical background used in this document, please refer to the [Reference and Glossary](./03_reference.md#prerequisites).**
@@ -87,3 +88,91 @@ The scope of this design is defined as follows:
 
 ---
 
+# 4. System Structure
+
+This tool aims to improve the performance of statistics updates in PostgreSQL by using AI to estimate the optimal number of sampling rows and executing `ANALYZE` based on those estimates.
+
+The initial phase assumes a local execution environment, with future possibilities of cloud deployment and integration with a web UI.
+
+The system consists of the following two phases:
+
+- **Learning Phase**: Collects statistics and execution plans before and after queries, and trains an AI model to estimate optimal sampling row counts
+- **Application Phase**: Uses the trained model to estimate sampling row counts and applies `ANALYZE` in production environments
+
+## Overview of the Learning and Application Phases
+
+
+```
+[Learning Phase: Executed in development or PoC environments]  
+↓  
+1. Specify a target query  
+↓  
+2. For each included table, repeat the following:  
+   - Collect statistical metrics (e.g., from pg_stat)  
+   - Estimate the sampling row count using AI  
+   - Execute ANALYZE based on the estimated value  
+   - Retrieve the execution plan and record the processing time  
+↓  
+3. Retrain the AI model using the execution plan and collected statistics  
+↓  
+4. Save the trained model to a file (e.g., best_model.pkl)  
+
+↓
+
+[Application Phase: Executed in production environments]  
+↓  
+1. Specify a target query  
+↓  
+2. Collect only the metrics of the involved tables  
+↓  
+3. Estimate the sampling row count using the trained model  
+↓  
+4. Execute ANALYZE based on the estimated value  
+   (or output logs in dry-run mode)  
+
+```
+
+## Component Structure
+
+The following outlines the module composition supporting both the learning and application phases:
+
+### Components in the Learning Phase
+
+#### 1. Sampling Optimization Engine (AI Logic)
+- Estimates optimal sampling row counts for each table based on past execution logs and statistics
+- Initially uses a simple rule-based or regression model; future expansions may include reinforcement learning or clustering
+- The trained model is saved as a file (e.g., Pickle format) and reused in the application phase
+
+#### 2. Metrics Collection Module
+- Collects statistical and structural information from system catalogs such as `pg_stat_all_tables`, `pg_stat_user_indexes`, and `pg_class`
+- Targets include `reltuples`, `n_dead_tup`, cardinality, correlation coefficients, etc.
+- Applies to all tables included in the query
+
+#### 3. Statistics Update & Execution Plan Logging Module
+- Executes `ANALYZE` based on the estimated sampling row count to update statistics
+- Then runs the target query and records its execution plan and duration
+- Results are stored in a history table or log file for reuse in learning
+
+### Components in the Application Phase
+
+#### 4. Trained Model Application Module
+- Loads the trained model file and estimates sampling row counts for target tables
+- Implements a fallback mechanism to default values if model-feature inconsistencies are detected (fail-safe design)
+
+#### 5. Sampling Execution & Statistics Update Module (Production)
+- Applies `ANALYZE` based on the estimated sampling row count
+- Targets only the tables included in the specified query
+- Post-statistics update, the system proceeds with production processing without retrieving execution plans
+
+### Common Components
+
+#### 6. Logging and Error Handling Mechanism
+- Outputs logs for execution results and anomaly detection
+- Includes retry processing, target exclusion, and feedback into the learning phase in case of errors
+
+#### 7. (Planned) Web UI / API Integration Module
+- Visualizes query patterns and prediction models  
+- Provides analysis dashboards for sampling accuracy and effectiveness  
+- Explores integration with CI/CD pipelines via backend APIs
+
+---
