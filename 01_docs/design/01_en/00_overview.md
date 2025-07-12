@@ -4,6 +4,7 @@
 2. [Background and Purpose](#2-background-and-purpose)
 3. [Scope](#3-scope)
 4. [System Structure](#4-system-structure)
+5. [Processing Overview](#5-processing-overview)
 
 
 📘 **For terminology and technical background used in this document, please refer to the [Reference and Glossary](./03_reference.md#prerequisites).**
@@ -174,5 +175,50 @@ The following outlines the module composition supporting both the learning and a
 - Visualizes query patterns and prediction models  
 - Provides analysis dashboards for sampling accuracy and effectiveness  
 - Explores integration with CI/CD pipelines via backend APIs
+
+---
+
+# 5. Processing Overview
+
+This tool aims to optimize the performance of statistics updates in PostgreSQL.  
+It uses AI to estimate an appropriate number of sampling rows for each table and applies that to the `ANALYZE` process, reducing update time and improving efficiency.
+
+The tool operates in two distinct phases:
+
+- **Learning Phase (PoC or development environment)**  
+  Collects statistical information and execution plans, then trains an AI model to estimate optimal sampling row counts.
+
+- **Application Phase (production environment)**  
+  Uses the trained model to estimate sampling row counts and applies them to `ANALYZE`.
+
+```
+
+[Learning Phase]  
+↓  
+1. Specify the target query  
+↓  
+2. For each table included in the query, perform the following:  
+   - Retrieve statistical information  
+   - Estimate the sampling row count using AI  
+   - Execute ANALYZE and update statistics  
+   - Retrieve and record the execution plan and execution time  
+↓  
+3. Retrain the model based on the results and save it as a file  
+
+↓
+
+[Application Phase]  
+↓  
+1. Specify the target query  
+↓  
+2. Collect metrics for each table  
+↓  
+3. Estimate sampling row counts using the trained model  
+↓  
+4. Execute ANALYZE based on the estimated values  
+
+```
+
+※ For detailed module structure, see [System Structure](#4-system-structure).
 
 ---
