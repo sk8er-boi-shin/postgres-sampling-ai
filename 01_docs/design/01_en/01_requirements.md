@@ -2,6 +2,7 @@
 
 1. [Functional Requirements](#1-functional-requirements)
 2. [Non-functional Requirements](#2-non-functional-requirements)
+3. [Technology Stack (Libraries and Runtime Environment)](#3-technology-stack-libraries-and-runtime-environment)
 
 
 📘 **For terminology and technical background used in this document, please refer to the [Reference and Glossary](./03_reference.md#prerequisites).**
@@ -177,3 +178,53 @@ Additionally, initial threshold values and constraints required during the basic
 - Since values may vary depending on version and environment (on-premises or cloud), **support for overrides via environment variables or config files is recommended**.
 
 ---
+
+
+# 3. Technology Stack (Libraries and Runtime Environment)
+
+The following factors were considered when selecting technologies for implementing this tool:
+
+- Balance between execution efficiency and learning cost
+- Availability of libraries for data analysis and model building
+- Compatibility with PostgreSQL and ease of SQL integration
+- Future potential for web UI or cloud deployment
+
+### Technologies Used
+
+| Category | Technology | Purpose / Reason |
+|----------|------------|------------------|
+| Language | Python 3.9+ | Enables unified implementation for data handling, AI modeling, and DB access. Offers both low learning cost and rich libraries. ※1 |
+| Data Analysis | pandas / numpy | Used for processing and analyzing statistical info and logs. Chosen for lightweight use cases. ※2 |
+| Machine Learning | scikit-learn | Used to build lightweight regression models to estimate sampling row counts. Simple, well-suited for small to mid-scale data, and easy to maintain. ※3 |
+| Data Visualization (optional) | matplotlib / seaborn | Used during PoC phase to visualize model accuracy and feature distributions. ※4 |
+| DB Access | psycopg2 | Secure and efficient PostgreSQL driver. |
+| Logging | logging | For recording execution results and errors. Also used to accumulate data for training. |
+
+※1: R and Julia excel at statistical analysis but lack seamless DB integration. Java and C# are better suited for business systems, but less favorable for AI/ML due to higher learning cost and library usability. Python offers balanced support for ML, data analysis, and database operations.
+
+※2: Since the workload per query is small (approx. 100 rows max), pandas/numpy were selected for fast startup and rich ecosystems. High-performance libraries like Dask or Polars are more suited for large-scale data and parallel processing, which would cause overhead in this case.
+
+※3: This tool handles relatively small feature sets (tens of columns) and small to mid-sized data (a few thousand rows) per query. scikit-learn is fast, lightweight, and integrates well with pandas/numpy. `.fit()` / `.predict()` are simple to use, and model persistence is easy. XGBoost and LightGBM offer high accuracy but are overkill for this context. Deep learning frameworks like TensorFlow or PyTorch are not ideal due to complexity and low interpretability.
+
+※4: matplotlib/seaborn were chosen for lightweight, mature visualizations. They integrate well with pandas and scikit-learn and are sufficient for PoC needs. More complex tools like Plotly, Altair, or Dash were excluded as overkill.
+
+
+### Runtime Environment
+
+| Category | Details |
+|----------|---------|
+| OS | Linux (Ubuntu 22.04) is assumed. Provides a lightweight and stable environment for batch processing and data analysis. Also compatible with PostgreSQL and cloud migration. macOS is also supported. |
+| Python Version | Python 3.9 or later (to ensure compatibility and maintainability) ※1 |
+| PostgreSQL Version | PostgreSQL 13 or later (for improved ANALYZE and statistics features) |
+| Execution Mode | Local script (CLI-based). Can be scheduled with cron. |
+| Required Permissions | Must have database access with ANALYZE privileges. |
+| Extensibility | Future plans may include Dockerization and deployment via cloud services (e.g., AWS Batch or Lambda). |
+
+※1: Python 3.8 and earlier are no longer supported and are not suitable for long-term use. Python 3.9+ introduces useful features like the dictionary merge operator `|`, improving readability and maintainability.
+
+
+### Future Expansion Plans
+
+- Consider adopting **MLflow** or **DVC** for model management.
+- Web UI integration is envisioned through REST API, allowing frontend frameworks (e.g., React, Next.js).
+- Integration with **CI/CD pipelines** for model auto-updating and notifications.
