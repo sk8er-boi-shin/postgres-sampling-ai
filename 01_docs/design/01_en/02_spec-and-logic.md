@@ -2,6 +2,7 @@
 
 1. [Input/Output Specifications](#1-inputoutput-specifications)
 2. [Module Structure](#2-module-structure)
+3. [Data Structures and Specifications to Consider](#3-data-structures-and-specifications-to-consider)
 
 
 📘 **For terminology and technical background used in this document, please refer to the [Reference and Glossary](./03_reference.md#prerequisites).**
@@ -105,5 +106,80 @@ Each module is clearly separated by responsibility, aiming for an architecture t
 
 > Responsibilities of each module will be further refined in the detailed design phase.  
 > Python package structure (e.g., `/modules/`, `/utils/`) and dependency design will also be addressed during implementation.
+
+---
+
+# 3. Data Structures and Specifications to Consider
+
+This section outlines the internal structures of PostgreSQL, column characteristics, and data specifications that should be considered when collecting, estimating, and applying statistical information, as well as the features required for AI-based row estimation.
+
+
+
+### 1. PostgreSQL Structures Related to Statistics
+
+| Table / View            | Description                     | Key Columns Used                                              |
+|-------------------------|----------------------------------|---------------------------------------------------------------|
+| `pg_class`              | Basic table information          | `reltuples`, `relpages`, `relkind`                            |
+| `pg_stat_all_tables`    | Per-table statistics             | `n_tup_ins`, `n_tup_upd`, `n_tup_del`, `n_live_tup`, `n_dead_tup` |
+| `pg_stat_user_indexes`  | Index usage statistics           | `idx_scan`, `idx_tup_read`                                   |
+| `pg_attribute`          | Column definitions               | `attname`, `attnum`, `attstattarget`                         |
+| `pg_stats`              | Per-column statistics (view)     | `null_frac`, `n_distinct`, `most_common_vals`, `histogram_bounds`, `correlation` |
+
+
+
+### 2. Features for AI Model Training (Feature Vectors)
+
+The AI estimates the sampling row count based on the following expected features:
+
+- **Table size indicators**  
+  - `reltuples` (estimated number of rows)  
+  - `relpages` (table size in pages)
+
+- **Column statistical characteristics**  
+  - `n_distinct` (uniqueness)  
+  - `correlation` (correlation coefficient)  
+  - `null_frac` (NULL ratio)  
+  - Number of columns (used for feature dimensionality)
+
+- **Update frequency and data volatility**  
+  - `n_tup_upd`, `n_tup_ins`, `n_tup_del`  
+  - `n_dead_tup` (degree of fragmentation)
+
+- **Other metadata (design stage)**  
+  - Whether the table is partitioned  
+  - Whether partial indexes exist  
+  - Schema/table name patterns (for exclusion filtering)
+
+
+
+### 3. Specifications and Constraints to Consider
+
+| Item                      | Description                                          | Notes                                                        |
+|---------------------------|------------------------------------------------------|--------------------------------------------------------------|
+| Handling of foreign tables | Tables with `pg_class.relkind = 'f'` are excluded    | ANALYZE is not supported on FDW tables                       |
+| Partitioning structure    | Target of ANALYZE differs depending on parent-child  | Caution required whether `ANALYZE parent_table` includes children |
+| Granularity of statistics | PostgreSQL manages stats at column level             | Tunable via `default_statistics_target`                      |
+| Extended statistics       | Multi-column stats from PostgreSQL 10+               | Currently out of scope but may be included in future         |
+| Accuracy of `reltuples`   | May differ from actual row count                     | Can be unreliable unless recently ANALYZEd                   |
+| Delay in `pg_stat_xxx`    | May lag behind buffer cache updates                  | Especially right after updates or inserts                    |
+| `INHERITS` tables         | Legacy table inheritance mechanism                   | Not recommended; may be confused with partitions             |
+
+
+
+### 4. Assumed Data Structures for Future Expansion
+
+- **Execution log structure (CSV or DB table)**  
+  - `query_id`, `table_name`, `estimated_rows`, `actual_duration`, `plan_type`, `timestamp`
+
+- **Feature cache mechanism**  
+  - To skip redundant computation for unchanged table structures
+
+- **Training data structure for model retraining**  
+  - Logs combining input features and target label (optimal sample count)
+
+
+
+*During implementation, the above specifications will be reorganized into SQL views or Python DataFrame structures.  
+Additionally, differences in PostgreSQL versions and handling of extended statistics will be evaluated through testing before adoption.*
 
 ---
