@@ -3,6 +3,7 @@
 1. [Input/Output Specifications](#1-inputoutput-specifications)
 2. [Module Structure](#2-module-structure)
 3. [Data Structures and Specifications to Consider](#3-data-structures-and-specifications-to-consider)
+4. [External Interfaces (DB/API, etc.)](#4-external-interfaces-dbapi-etc)
 
 
 📘 **For terminology and technical background used in this document, please refer to the [Reference and Glossary](./03_reference.md#prerequisites).**
@@ -183,3 +184,74 @@ The AI estimates the sampling row count based on the following expected features
 Additionally, differences in PostgreSQL versions and handling of extended statistics will be evaluated through testing before adoption.*
 
 ---
+
+# 4. External Interfaces (DB/API, etc.)
+
+This section outlines the external interfaces that this tool depends on or integrates with.  
+It mainly covers the PostgreSQL database connection specifications and conceptual plans for future API integration.
+
+
+### 1. Database Interface (PostgreSQL)
+
+#### Connection Specifications
+
+| Item | Details |
+|------|---------|
+| Target | PostgreSQL 13 or later |
+| Connection Method | Direct connection using `psycopg2` library (emphasizing compatibility and stability) |
+| Authentication | Username/password (via config file or environment variables) |
+| Port | 5432 (modifiable) |
+| Required Permissions | `ANALYZE` privilege, `SELECT` on relevant schemas, and optionally `INSERT` / `UPDATE` / `DELETE` |
+| Exclusions | Foreign Tables (FDW), INHERITS-based inheritance tables |
+
+#### Main SQL Interfaces
+
+| Function | SQL/View Used | Notes |
+|----------|----------------|-------|
+| Retrieve Stats | `pg_stat_all_tables`, `pg_class`, `pg_stats`, `pg_attribute`, etc. | Limited to the target query tables |
+| Execution Plan | `EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON)` | Only used in the learning phase |
+| Update Stats | `ANALYZE table_name` | Controlled by estimated row count (full or column-specific) |
+| Get Table Info | `information_schema.tables`, `pg_namespace`, etc. | Used to determine exclusions (by schema/type) |
+
+
+
+### 2. Model Input/Output Interface
+
+| Item | Details |
+|------|---------|
+| Format | Pickle or Joblib (scikit-learn compatible) |
+| Save Timing | Model file is saved at the end of the learning phase |
+| Storage | Local file system (initially), cloud storage (e.g., S3) planned in the future |
+| Load Method | Loaded at the start of the application phase |
+| Filename Format | `best_model.pkl`, `model_<timestamp>.pkl`, etc. (for version management) |
+
+
+
+### 3. Future API / External Integration Plans
+
+#### Planned API Integrations
+
+| Function | Description |
+|----------|-------------|
+| Query Execution Request | Receives a query via API, performs sampling estimation and executes `ANALYZE` |
+| Model Visualization | Returns model feature importance, structure, etc. |
+| Stats Log Output | Returns logs of statistics and estimated values in JSON format |
+
+#### Web UI Integration Assumptions
+
+- Frontend: lightweight framework such as React
+- Backend: Flask or FastAPI
+- Features envisioned: graphical display of estimation results, log monitoring dashboard, etc.
+
+
+
+### 4. Security and Permissions Notes
+
+- The database user must have sufficient privileges, including the ability to execute `ANALYZE`
+- Parameter binding must be used for all queries to prevent SQL injection
+- File paths must be configurable (via config/environment) and not hard-coded
+- If API integration is implemented in the future, API authentication, role-based access control, and access restriction must be enforced
+
+
+---
+
