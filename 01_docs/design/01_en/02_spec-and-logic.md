@@ -1,6 +1,7 @@
 # Table of Contents
 
 1. [Input/Output Specifications](#1-inputoutput-specifications)
+2. [Module Structure](#2-module-structure)
 
 
 📘 **For terminology and technical background used in this document, please refer to the [Reference and Glossary](./03_reference.md#prerequisites).**
@@ -48,3 +49,61 @@ Future enhancements may include modes limited to `EXPLAIN` or outputting logs on
 - All input/output files use UTF-8 encoding.
 - Output destinations for model files and statistics can be changed via `config.yaml` or CLI options.
 - For future cloud integration (e.g., S3), output destinations like `s3://` URIs will be supported.
+
+
+---
+
+# 2. module structure
+
+This section describes the module structure that supports the main processing phases (learning phase / application phase) of this tool.  
+Each module is clearly separated by responsibility, aiming for an architecture that allows easy future extensions or replacements.
+
+
+
+### Learning Phase (PoC / Development Environment)
+
+| Module Name            | Role                                                                 |
+|------------------------|----------------------------------------------------------------------|
+| `metrics_collector.py` | Collects table statistics (e.g., from pg_stat, pg_class) used in the query |
+| `sampling_estimator.py`| Estimates sampling row counts using AI (regression model) based on collected stats |
+| `analyze_executor.py`  | Executes `ANALYZE` using the estimated value to update statistics     |
+| `plan_logger.py`       | Retrieves and logs the execution plan and elapsed time after query execution |
+| `model_trainer.py`     | Trains a regression model using the results and saves it as a `.pkl` file |
+
+
+
+### Application Phase (Production or Operational Use)
+
+| Module Name            | Role                                                                 |
+|------------------------|----------------------------------------------------------------------|
+| `metrics_collector.py` | Collects metrics (same as in the learning phase)                     |
+| `model_loader.py`      | Loads the trained model and performs estimation                      |
+| `analyze_executor.py`  | Executes `ANALYZE` with estimated rows (dry-run mode also considered) |
+
+
+
+### Common / Supporting Modules
+
+| Module Name            | Role                                                                 |
+|------------------------|----------------------------------------------------------------------|
+| `logger.py`            | Outputs logs for execution results, errors, and estimation values    |
+| `config_loader.py`     | Loads configuration files (YAML/JSON) and manages common parameters  |
+| `query_parser.py`      | Extracts target tables from a given SQL query                        |
+| `error_handler.py`     | Handles errors (retry, skip, notify, etc.)                           |
+| `constants.py`         | Manages threshold values and constants centrally                     |
+
+
+
+### Planned Extensions (Future Vision)
+
+| Tentative Module Name  | Role                                                                 |
+|------------------------|----------------------------------------------------------------------|
+| `api_server.py`        | REST API server for requests from Web UI or external tools           |
+| `ui_adapter.py`        | Converts model results and stats for visual representation           |
+| `job_scheduler.py`     | Manages scheduled/batch jobs (cron or CI/CD integration)             |
+
+
+> Responsibilities of each module will be further refined in the detailed design phase.  
+> Python package structure (e.g., `/modules/`, `/utils/`) and dependency design will also be addressed during implementation.
+
+---
