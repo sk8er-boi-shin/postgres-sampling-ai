@@ -5,6 +5,7 @@
 3. [Data Structures and Specifications to Consider](#3-data-structures-and-specifications-to-consider)
 4. [External Interfaces (DB/API, etc.)](#4-external-interfaces-dbapi-etc)
 5. [Sampling Row Estimation Logic Using AI](#5-sampling-row-estimation-logic-using-ai)
+6. [Error Handling & Logging](#6-error-handling--logging)
 
 
 📘 **For terminology and technical background used in this document, please refer to the [Reference and Glossary](./03_reference.md#prerequisites).**
@@ -329,3 +330,67 @@ The following features are expected as input to the AI model:
 - Feature design and modeling are extensible to support future accuracy improvements or model changes.
 - To ensure robustness against outliers and data spikes, normalization and outlier handling logic will be considered.
 - CI pipeline integration and model evaluation metrics (e.g., RMSE, R²) may also be introduced as needed.
+
+
+---
+
+# 6. Error Handling & Logging
+
+This section outlines the error handling and logging policies of the tool.  
+The goal is to enhance reliability and maintainability while ensuring traceability and reproducibility in case of errors.
+
+
+### 1. Error Handling Policy
+
+| Type                   | Handling Policy                                | Notes                                           |
+|------------------------|------------------------------------------------|-------------------------------------------------|
+| DB Connection Error    | Immediate logging, retry, then abort           | e.g., connection timeout or authentication error |
+| Query Execution Error  | Log and skip the target                        | e.g., SQL syntax error, insufficient privileges |
+| Model Load Failure     | Fallback to default value                      | e.g., corrupted file or invalid path            |
+| Feature Extraction Fail| Skip the table and log a warning               | e.g., failure to read `pg_stat` info            |
+| Abnormal Estimation    | Forcefully corrected to min/max threshold      | Prevents invalid sampling size                  |
+| File I/O Error         | Log the error, continue or abort               | e.g., JSON output or model save failure         |
+| Unknown Exception      | Log with traceback and abort                   | Useful for debugging or failure investigation   |
+
+
+### 2. Logging Design
+
+#### Log Types
+
+| Log Type  | Description                           | Example                                 |
+|-----------|---------------------------------------|-----------------------------------------|
+| INFO      | Normal process updates                | "Model loaded", "ANALYZE executed"      |
+| WARNING   | Minor recoverable issues              | "Missing statistics for table X"        |
+| ERROR     | Significant errors, processing halted | "Failed to connect to DB"               |
+| DEBUG     | Detailed debug info (optional)        | Feature values, model outputs, etc.     |
+
+#### Log Output Destinations
+
+- Console (stdout)
+- Local file (e.g., `logs/tool.log`)
+- Rotation support (by size or daily)
+- Future support for cloud logging (e.g., CloudWatch, Datadog)
+
+#### Log Format
+
+- JSON or formatted text
+- Includes timestamp, log level, target, message  
+  Example:  
+  `[2025-06-24 10:00:00][INFO] Table=sales ANALYZE executed with 10000 rows`
+
+
+### 3. Implementation Notes
+
+- Built on Python's `logging` module; configurable via settings file
+- Includes consistent output of query ID, table name for traceability
+- Logging configuration is flexible for use in unit tests and CI environments
+
+
+### 4. Future Enhancements
+
+- Provide an API to fetch logs in JSON format
+- Integrate with visualization tools (e.g., Grafana, Kibana)
+- Implement notification features (e.g., Slack, email) based on error patterns
+
+
+---
