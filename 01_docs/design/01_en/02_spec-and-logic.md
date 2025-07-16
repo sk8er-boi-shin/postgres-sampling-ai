@@ -4,6 +4,7 @@
 2. [Module Structure](#2-module-structure)
 3. [Data Structures and Specifications to Consider](#3-data-structures-and-specifications-to-consider)
 4. [External Interfaces (DB/API, etc.)](#4-external-interfaces-dbapi-etc)
+5. [Sampling Row Estimation Logic Using AI](#5-sampling-row-estimation-logic-using-ai)
 
 
 📘 **For terminology and technical background used in this document, please refer to the [Reference and Glossary](./03_reference.md#prerequisites).**
@@ -255,3 +256,76 @@ It mainly covers the PostgreSQL database connection specifications and conceptua
 
 ---
 
+# 5. Sampling Row Estimation Logic Using AI
+
+This chapter describes the design policy and implementation overview of the AI logic used to estimate appropriate sampling row counts for each table in the statistics update process.
+
+
+
+### 1. Objective
+
+- Balance **suppression of unnecessary full scans** and **optimization of statistical accuracy** during `ANALYZE` execution.
+- Estimate an appropriate sampling row count for each table to optimize processing time and accuracy.
+
+
+
+### 2. Estimation Method
+
+#### Basic Approach
+
+| Item | Description |
+|------|-------------|
+| Model Type | Regression model (Linear Regression, Random Forest, LightGBM, etc. to be tested) |
+| Input (Features) | Table statistics, structural metadata, update frequency, column-level statistics |
+| Output | Estimated sampling row count (integer) |
+| Library | `scikit-learn` (initial phase); consider switching to `XGBoost`, `LightGBM`, etc. in future |
+
+
+
+### 3. Example Features
+
+The following features are expected as input to the AI model:
+
+- **Table-level statistics**
+  - `reltuples` (estimated number of rows)
+  - `relpages` (number of blocks)
+
+- **Update & fragmentation metrics**
+  - `n_tup_upd`, `n_tup_ins`, `n_tup_del`, `n_dead_tup`
+
+- **Column-level statistics**
+  - `n_distinct`, `null_frac`, `correlation`
+
+- **Structural metadata**
+  - Presence of partitions or indexes, number of columns
+
+
+
+### 4. Control and Correction of Estimated Values
+
+- Set thresholds for minimum and maximum sampling row counts to prevent extreme estimates.
+- If any of the following conditions apply, fallback to the default (`default_statistics_target = 100`):
+  - Feature collection fails
+  - Mismatch between model version and feature schema
+  - Estimate deviates significantly from acceptable range
+
+> *Note: With `default_statistics_target = 100`, PostgreSQL internally samples approximately 10,000–30,000 rows per column.*
+
+
+
+### 5. Model Operation and Updates
+
+| Item | Description |
+|------|-------------|
+| Format | `joblib` or `pickle` |
+| Unit | Model file (e.g., `best_model.pkl`) + schema info in JSON |
+| Retraining | Retrained periodically using execution logs in the learning phase |
+| Switching | Versioned by timestamp or ID; supports manual switching |
+
+
+
+### 6. Notes
+
+- Feature design and modeling are extensible to support future accuracy improvements or model changes.
+- To ensure robustness against outliers and data spikes, normalization and outlier handling logic will be considered.
+- CI pipeline integration and model evaluation metrics (e.g., RMSE, R²) may also be introduced as needed.
