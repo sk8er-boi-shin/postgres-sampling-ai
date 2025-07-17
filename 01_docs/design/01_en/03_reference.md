@@ -1,6 +1,7 @@
 # Table of Contents
 
 1. [References and Glossary](#1-references-and-glossary)
+2. [Future Expansion Plans](#2-future-expansion-plans)
 
 ---
 
@@ -46,3 +47,44 @@
 
 
 ---
+
+# 2. Future Expansion Plans
+
+This section outlines features and improvements that are not currently implemented but are being considered for future enhancement.
+
+### 1. Web UI Integration
+
+- Visualization of training and application results (e.g., sampling row count, prediction basis, execution time)
+- GUI-based control for specifying queries, selecting models, and executing dry-run operations
+- Dashboard to track the time-series transition of statistical information
+
+### 2. Continuous Model Learning and Evaluation
+
+- Automatic retraining based on accumulated execution logs (predicted values and actual performance)
+- Periodic model evaluation and automatic replacement
+- Integration with CI/CD pipelines to prevent deployment of underperforming models
+
+### 3. Multi-node / Cluster Support
+
+- Extension of model application logic for PostgreSQL cluster environments
+- Support for statistical discrepancies depending on the query routing destination
+
+### 4. Flexible Configuration via Files or Environment Variables
+
+- Configuration management using `.yaml` or `.toml` files
+- Externalization of rules for max/min sample rows and table exclusions
+
+### 5. Enhanced Security and Operational Reliability
+
+- Log encryption and tamper detection
+- JWT authentication and RBAC implementation for API integrations
+- Scheduling support using cron or Airflow
+
+### 6. Expansion of Supported RDBMS (Mid to Long Term)
+
+- Although the tool currently supports only PostgreSQL, the following RDBMS are also under consideration:
+  - Amazon Aurora PostgreSQL
+  - Greenplum / YugabyteDB
+  - MySQL family (requires redesign due to different sampling mechanisms)
+
+> Note: The above items are conceptual and their implementation priorities will be determined based on PoC results, user feedback, and operational outcomes.
