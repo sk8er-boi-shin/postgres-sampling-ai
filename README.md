@@ -1,3 +1,9 @@
+## ⚠️ Note: This branch is a work in progress (WIP)
+
+- Initial class scaffolding has been completed.
+- Database connectivity and execution with PostgreSQL have **not** been tested yet.
+- Please refrain from merging into `main` until the implementation is stable.
+
 # postgres-sampling-ai
 
 A Python-based tool to **automatically determine optimal sampling rates** for PostgreSQL's statistics collection,  
